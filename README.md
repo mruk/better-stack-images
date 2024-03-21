@@ -7,7 +7,7 @@ This is never-ending-project.
 **--annotate**  print file metadata visual on image,  
 **--stream**    repack video stream from mp4 to mjpg for picky Registax,  
 **--frame-center**    find centroid of image and center it,  
-**--frame-crop**      crop frame,  
+**--frame-crop**      crop frame with one or two arguments (eg. *--frame-crop 1280 720*)  
 **--skip-blur**       skip bottom of blurred images,  
 **--frame-resize**    resize,  
 **--frame-save**      save all frames as .png, also for picky Registax,  

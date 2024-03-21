@@ -17,7 +17,7 @@ def parse_arguments():
     parser.add_argument('--stream', action='store_true', help='repack and save video stream from mp4 to mjpg for '
                                                               'picky Registax')
     parser.add_argument('--frame-center', action='store_true', help='find centroid of image and center it')
-    parser.add_argument('--frame-crop', action='store_true', help='crop')
+    parser.add_argument('--frame-crop', nargs='+', type=int, help='Crop size in x y pixels, e.g. 1200 1200')
     parser.add_argument('--skip-blur', action='store_true', help='skip bottom of blurred images')
     parser.add_argument('--frame-resize', action='store_true', help='resize')
     parser.add_argument('--frame-save', action='store_true', help='save all frames as .png, also for picky Registax')
@@ -92,11 +92,15 @@ while video_capture.isOpened():
 
     # crop size
     if args.frame_crop:
-        crop_width, crop_height = 1600, 1600
+        crop_width, crop_height = 128, 128
+        if len(args.frame_crop) == 1:
+            crop_width = crop_height = args.frame_crop[0]
+        elif len(args.frame_crop) == 2:
+            crop_width, crop_height = args.frame_crop
         # współrzędne początkowe (x, y) dla wycięcia
-        start_x = video_frame.shape[1] // 2 - crop_width // 2 + 256
-        start_y = video_frame.shape[0] // 2 - crop_height // 2 - 256
-        # crop kwadratu ze środka
+        start_x = video_frame.shape[1] // 2 - crop_width // 2
+        start_y = video_frame.shape[0] // 2 - crop_height // 2
+        # crop kwadratu/prostokąta ze środka
         video_frame = video_frame[start_y:start_y + crop_height, start_x:start_x + crop_width]
 
     # metadata
