@@ -53,9 +53,12 @@ def get_center_of_image(image):
     # momenty obrazu
     moments = cv2.moments(thresholded)
     # środek masy obiektu
-    _cx = int(moments["m10"] / moments["m00"])
-    _cy = int(moments["m01"] / moments["m00"])
-    # print(f"center of image: {_cx}, {_cy}")
+    if moments["m00"] != 0:
+        _cx = int(moments["m10"] / moments["m00"])
+        _cy = int(moments["m01"] / moments["m00"])
+    else:
+        _cx = image.shape[1] // 2
+        _cy = image.shape[0] // 2
     return _cx, _cy
 
 
@@ -94,9 +97,14 @@ print(f"total frames: {total_frames}")
 
 # zapis wideo
 if args.stream:
+    # rozmiar ramki oczekiwanej
+    if args.frame_crop:
+        output_size = (args.frame_crop[0], args.frame_crop[1] if len(args.frame_crop) > 1 else args.frame_crop[0])
+    else:
+        output_size = (width_src, height_scr)
     # MJPG do timelapsów
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    wideo_out = cv2.VideoWriter(output_video_path, fourcc, fps_src, (width_src, height_scr))
+    wideo_out = cv2.VideoWriter(output_video_path, fourcc, fps_src, output_size)
 
 print("processing frame:")
 while video_capture.isOpened():
@@ -123,7 +131,9 @@ while video_capture.isOpened():
         copy_width = min(video_frame.shape[1] - src_start_x, new_frame.shape[1] - dst_start_x)
         copy_height = min(video_frame.shape[0] - src_start_y, new_frame.shape[0] - dst_start_y)
         # skopiowanie fragmentu obrazu do nowej ramki z przesunięciem
-        new_frame[dst_start_y:dst_start_y + copy_height, dst_start_x:dst_start_x + copy_width] = video_frame[src_start_y:src_start_y + copy_height, src_start_x:src_start_x + copy_width]
+        new_frame[dst_start_y:dst_start_y + copy_height, dst_start_x:dst_start_x + copy_width] = \
+            video_frame[src_start_y:src_start_y + copy_height, src_start_x:src_start_x + copy_width]
+
         video_frame = new_frame
 
     # crop size
