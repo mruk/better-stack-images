@@ -1,6 +1,7 @@
 import argparse
 import cv2
 from datetime import datetime, timedelta
+import numpy as np
 import subprocess
 import json
 import os
@@ -41,6 +42,21 @@ if args.frame_resize:
     print("Resizing is enabled")
 if args.frame_save:
     print("Saving all frames as .png is enabled")
+
+
+
+def get_center_of_image(image):
+    # konwersja do skali szarości
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # przycięcie do umownego progu 40
+    _, thresholded = cv2.threshold(gray, 40, 255, cv2.THRESH_BINARY)
+    # momenty obrazu
+    moments = cv2.moments(thresholded)
+    # środek masy obiektu
+    _cx = int(moments["m10"] / moments["m00"])
+    _cy = int(moments["m01"] / moments["m00"])
+    # print(f"center of image: {_cx}, {_cy}")
+    return _cx, _cy
 
 
 def get_frame_creation_time(capture, sub_sec_createdatetime):
@@ -90,6 +106,26 @@ while video_capture.isOpened():
 
     current_frame = int(video_capture.get(cv2.CAP_PROP_POS_FRAMES))
 
+    # wypośrodkowanie obrazu
+    if args.frame_center:
+        new_frame = np.zeros_like(video_frame)
+        cx, cy = get_center_of_image(video_frame)
+        # wektor przesunięcia
+        start_x = width_src // 2 - cx
+        start_y = height_scr // 2 - cy
+        # punkty startowe dla kopiowania obrazu
+        src_start_x = max(0, -start_x)
+        src_start_y = max(0, -start_y)
+        # punkty startowe dla wklejenia obrazu
+        dst_start_x = max(0, start_x)
+        dst_start_y = max(0, start_y)
+        # rozmiar fragmentu do skopiowania
+        copy_width = min(video_frame.shape[1] - src_start_x, new_frame.shape[1] - dst_start_x)
+        copy_height = min(video_frame.shape[0] - src_start_y, new_frame.shape[0] - dst_start_y)
+        # skopiowanie fragmentu obrazu do nowej ramki z przesunięciem
+        new_frame[dst_start_y:dst_start_y + copy_height, dst_start_x:dst_start_x + copy_width] = video_frame[src_start_y:src_start_y + copy_height, src_start_x:src_start_x + copy_width]
+        video_frame = new_frame
+
     # crop size
     if args.frame_crop:
         crop_width, crop_height = 128, 128
@@ -125,6 +161,8 @@ while video_capture.isOpened():
         print(".", end="", flush=True)
 
 # uwolnienie zasobów
+if args.stream:
+    wideo_out.release()
 video_capture.release()
 wideo_out.release()
 cv2.destroyAllWindows()

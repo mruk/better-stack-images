@@ -6,7 +6,7 @@ This is never-ending-project.
 ### Main (target) features:  
 **--annotate**  print file metadata visual on image,  
 **--stream**    repack video stream from mp4 to mjpg for picky Registax,  
-**--frame-center**    find centroid of image and center it,  
+**--frame-center**    find feature centroid in input frame and center it in output frame,  
 **--frame-crop**      crop frame with one or two arguments (eg. *--frame-crop 1280 720*)  
 **--skip-blur**       skip bottom of blurred images,  
 **--frame-resize**    resize,  
