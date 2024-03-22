@@ -82,6 +82,14 @@ def get_frame_creation_time(capture, sub_sec_createdatetime):
     return frame_time.strftime('%Y/%m/%d T %H:%M:%S.%f')[:-4]
 
 
+def progress_bar(_current_frame, _total_frames, fps):
+    total_seconds = int(_total_frames // fps)
+    current_second = int(_current_frame // fps)
+    bar = ['-' for _ in range(int(fps))]
+    bar[int(_current_frame % fps)] = '|'  # aktualna klatka
+    return f"[ {str(current_second).zfill(3)} / {str(total_seconds).zfill(3)}s ] |" + ''.join(bar) + '|'
+
+
 # uruchomienie exiftool
 cmd = ['exiftool', '-j', video_path]
 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -120,7 +128,7 @@ if args.stream:
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     wideo_out = cv2.VideoWriter(output_video_path, fourcc, fps_src, output_size)
 
-print("processing frame:")
+print("Processing: ")
 while video_capture.isOpened():
     ret, video_frame = video_capture.read()
     if not ret:
@@ -161,14 +169,8 @@ while video_capture.isOpened():
     if args.stream:
         wideo_out.write(video_frame)
 
-    if current_frame % fps_src == 0:
-        print(".")
-    else:
-        print(".", end="", flush=True)
-
 # uwolnienie zasobów
 if args.stream:
     wideo_out.release()
 video_capture.release()
-wideo_out.release()
 cv2.destroyAllWindows()
