@@ -44,11 +44,10 @@ if args.frame_save:
     print("Saving all frames as .png is enabled")
 
 
-
-def get_center_of_image(image):
-    # konwersja do skali szarości
+def get_centered_image(image):
+    # klatki pomocnicze
+    new_frame = np.zeros_like(image)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # przycięcie do umownego progu 40
     _, thresholded = cv2.threshold(gray, 40, 255, cv2.THRESH_BINARY)
     # momenty obrazu
     moments = cv2.moments(thresholded)
@@ -59,8 +58,23 @@ def get_center_of_image(image):
     else:
         _cx = image.shape[1] // 2
         _cy = image.shape[0] // 2
-    return _cx, _cy
 
+    # wektor przesunięcia
+    _start_x = image.shape[1] // 2 - _cx
+    _start_y = image.shape[0] // 2 - _cy
+    # punkty startowe dla kopiowania obrazu
+    src_start_x = max(0, -_start_x)
+    src_start_y = max(0, -_start_y)
+    # punkty startowe dla wklejenia obrazua
+    dst_start_x = max(0, _start_x)
+    dst_start_y = max(0, _start_y)
+    # rozmiar fragmentu do skopiowania
+    copy_width = min(image.shape[1] - src_start_x, new_frame.shape[1] - dst_start_x)
+    copy_height = min(image.shape[0] - src_start_y, new_frame.shape[0] - dst_start_y)
+    # skopiowanie fragmentu obrazu do nowej ramki z przesunięciem
+    new_frame[dst_start_y:dst_start_y + copy_height, dst_start_x:dst_start_x + copy_width] = \
+        image[src_start_y:src_start_y + copy_height, src_start_x:src_start_x + copy_width]
+    return new_frame
 
 def get_frame_creation_time(capture, sub_sec_createdatetime):
     msec = capture.get(cv2.CAP_PROP_POS_MSEC)
@@ -116,25 +130,7 @@ while video_capture.isOpened():
 
     # wypośrodkowanie obrazu
     if args.frame_center:
-        new_frame = np.zeros_like(video_frame)
-        cx, cy = get_center_of_image(video_frame)
-        # wektor przesunięcia
-        start_x = width_src // 2 - cx
-        start_y = height_scr // 2 - cy
-        # punkty startowe dla kopiowania obrazu
-        src_start_x = max(0, -start_x)
-        src_start_y = max(0, -start_y)
-        # punkty startowe dla wklejenia obrazu
-        dst_start_x = max(0, start_x)
-        dst_start_y = max(0, start_y)
-        # rozmiar fragmentu do skopiowania
-        copy_width = min(video_frame.shape[1] - src_start_x, new_frame.shape[1] - dst_start_x)
-        copy_height = min(video_frame.shape[0] - src_start_y, new_frame.shape[0] - dst_start_y)
-        # skopiowanie fragmentu obrazu do nowej ramki z przesunięciem
-        new_frame[dst_start_y:dst_start_y + copy_height, dst_start_x:dst_start_x + copy_width] = \
-            video_frame[src_start_y:src_start_y + copy_height, src_start_x:src_start_x + copy_width]
-
-        video_frame = new_frame
+        video_frame = get_centered_image(video_frame)
 
     # crop size
     if args.frame_crop:
