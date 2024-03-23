@@ -135,6 +135,15 @@ while video_capture.isOpened():
         break
 
     current_frame = int(video_capture.get(cv2.CAP_PROP_POS_FRAMES))
+    laplacian = 0
+    print(progress_bar(current_frame, total_frames, fps_src), end='\r')
+
+    # pomijanie rozmytych klatek
+    if args.skip_blur:
+        laplacian = cv2.Laplacian(video_frame, cv2.CV_64F).var()
+        # print(f"laplacian: {laplacian}")
+        if laplacian < 1.0:  # wielkość arbitralna
+            continue
 
     # wypośrodkowanie obrazu
     if args.frame_center:
@@ -155,6 +164,10 @@ while video_capture.isOpened():
 
     # metadata
     if args.annotate:
+        if args.skip_blur:
+            cv2.putText(video_frame, f"laplacian {laplacian}",
+                        (16, 96), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
+
         cv2.putText(video_frame, f"{get_frame_creation_time(video_capture, sub_sec_create_date)}",
                     (16, 32), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
         cv2.putText(video_frame, f"{text_autoiso}, {text_cameratemp}",
