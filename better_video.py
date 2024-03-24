@@ -6,20 +6,17 @@ import subprocess
 import json
 import os
 
-video_path = 'D:/rac/ASTRO/2024/2024_03_19 Luna/MVI_9192.MP4'
-output_video_path = 'D:/rac/ASTRO/2024/2024_03_19 Luna/MVI_9192.avi'
-output_frame_path = 'D:/rac/ASTRO/2024/2024_03_19 Luna/MVI_9192png/'
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Better Stack Images')
 
+    parser.add_argument('--open-file', type=str, help='Full path to video file')
     parser.add_argument('--annotate', action='store_true', help='print file metadata visual on image')
     parser.add_argument('--stream', action='store_true', help='repack and save video stream from mp4 to mjpg for '
                                                               'picky Registax')
-    parser.add_argument('--frame-center', action='store_true', help='find centroid of image and center it')
+    parser.add_argument('--frame-center', nargs='+', type=int, help='find centroid of image and center it')
     parser.add_argument('--frame-crop', nargs='+', type=int, help='Crop size in x y pixels, e.g. 1200 1200')
-    parser.add_argument('--skip-blur', action='store_true', help='skip bottom of blurred images')
+    parser.add_argument('--skip-blur', nargs=1, type=float, help='skip bottom of blurred images')
     parser.add_argument('--frame-resize', action='store_true', help='resize')
     parser.add_argument('--frame-save', action='store_true', help='save all frames as .png, also for picky Registax')
 
@@ -27,6 +24,14 @@ def parse_arguments():
 
 
 args = parse_arguments()
+# sama nazwa pliku...
+source_file_name = os.path.basename(args.open_file)
+# ...bez rozszerzenia
+source_plain_name = os.path.splitext(source_file_name)[0]
+
+video_path = args.open_file
+output_video_path = f"{os.path.splitext(args.open_file)[0]}.avi"
+output_frame_folder = f"{os.path.splitext(args.open_file)[0]}_frames"
 
 if args.annotate:
     print("Annotation is enabled")
@@ -44,11 +49,11 @@ if args.frame_save:
     print("Saving all frames as .png is enabled")
 
 
-def get_centered_image(image):
+def get_centered_image(image, treshold):
     # klatki pomocnicze
     new_frame = np.zeros_like(image)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, thresholded = cv2.threshold(gray, 40, 255, cv2.THRESH_BINARY)
+    _, thresholded = cv2.threshold(gray, treshold, 255, cv2.THRESH_BINARY)
     # momenty obrazu
     moments = cv2.moments(thresholded)
     # środek masy obiektu
@@ -75,6 +80,7 @@ def get_centered_image(image):
     new_frame[dst_start_y:dst_start_y + copy_height, dst_start_x:dst_start_x + copy_width] = \
         image[src_start_y:src_start_y + copy_height, src_start_x:src_start_x + copy_width]
     return new_frame
+
 
 def get_frame_creation_time(capture, sub_sec_createdatetime):
     msec = capture.get(cv2.CAP_PROP_POS_MSEC)
@@ -141,13 +147,13 @@ while video_capture.isOpened():
     # pomijanie rozmytych klatek
     if args.skip_blur:
         laplacian = cv2.Laplacian(video_frame, cv2.CV_64F).var()
-        # print(f"laplacian: {laplacian}")
-        if laplacian < 1.0:  # wielkość arbitralna
+        print(f"laplacian: {laplacian}")
+        if laplacian < args.skip_blur[0]:  # wielkość arbitralna
             continue
 
     # wypośrodkowanie obrazu
     if args.frame_center:
-        video_frame = get_centered_image(video_frame)
+        video_frame = get_centered_image(video_frame, args.frame_center[0])
 
     # crop size
     if args.frame_crop:
@@ -175,7 +181,7 @@ while video_capture.isOpened():
 
     # save to image
     if args.frame_save:
-        output_filename = os.path.join(output_frame_path, f'frame_{current_frame:04d}.png')
+        output_filename = os.path.join(output_frame_folder, f'{source_plain_name}_{current_frame:04d}.png')
         cv2.imwrite(output_filename, video_frame)
 
     # save to video
