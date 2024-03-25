@@ -6,18 +6,24 @@ import subprocess
 import json
 import os
 
+# Lista dostępnych metod interpolacji metody resize
+resize_interpolation_methods = ['INTER_NEAREST', 'INTER_LINEAR', 'INTER_AREA', 'INTER_CUBIC', 'INTER_LANCZOS4']
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Better Stack Images')
 
     parser.add_argument('--open-file', type=str, help='Full path to video file')
     parser.add_argument('--annotate', action='store_true', help='print file metadata visual on image')
-    parser.add_argument('--stream', action='store_true', help='repack and save video stream from mp4 to mjpg for '
-                                                              'picky Registax')
+    parser.add_argument('--stream', action='store_true',
+                        help='repack and save video stream from mp4 to mjpg for picky Registax')
     parser.add_argument('--frame-center', nargs='+', type=int, help='find centroid of image and center it')
     parser.add_argument('--frame-crop', nargs='+', type=int, help='Crop size in x y pixels, e.g. 1200 1200')
     parser.add_argument('--skip-blur', nargs=1, type=float, help='skip bottom of blurred images')
-    parser.add_argument('--frame-resize', action='store_true', help='resize')
+    parser.add_argument('--frame-resize', nargs='+', type=int, help='resize frame to x y pixels, e.g. 1200 1200')
+    parser.add_argument('--resize-method', type=str, choices=resize_interpolation_methods, default='INTER_CUBIC',
+                        help='Method of interpolation to be used for resizing: '
+                             'INTER_NEAREST, INTER_LINEAR, INTER_AREA, INTER_CUBIC, INTER_LANCZOS4')
     parser.add_argument('--frame-save', action='store_true', help='save all frames as .png, also for picky Registax')
 
     return parser.parse_args()
@@ -32,6 +38,16 @@ source_plain_name = os.path.splitext(source_file_name)[0]
 video_path = args.open_file
 output_video_path = f"{os.path.splitext(args.open_file)[0]}.avi"
 output_frame_folder = f"{os.path.splitext(args.open_file)[0]}_frames"
+
+# mapa argumentów do stałych cv2
+resize_interpolation_constants = {
+    'INTER_NEAREST': cv2.INTER_NEAREST,
+    'INTER_LINEAR': cv2.INTER_LINEAR,
+    'INTER_AREA': cv2.INTER_AREA,
+    'INTER_CUBIC': cv2.INTER_CUBIC,
+    'INTER_LANCZOS4': cv2.INTER_LANCZOS4
+}
+
 
 if args.annotate:
     print("Annotation is enabled")
@@ -154,6 +170,11 @@ while video_capture.isOpened():
     # wypośrodkowanie obrazu
     if args.frame_center:
         video_frame = get_centered_image(video_frame, args.frame_center[0])
+
+    # zmiana rozmiaru
+    if args.frame_resize:
+        video_frame = cv2.resize(video_frame, (args.frame_resize[0], args.frame_resize[1]),
+                                 interpolation=resize_interpolation_constants[args.resize_method])
 
     # crop size
     if args.frame_crop:
