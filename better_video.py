@@ -137,8 +137,8 @@ if sub_sec_create_date is None:
     print(f"Could not parse date: {text_createdate}")
 
 print(metadata)
-print(f"{sub_sec_create_date}")
-print(f"{text_mediaduration}")
+print(f"SubSecCreateDate: {sub_sec_create_date}")
+print(f"MediaDuration   : {text_mediaduration}")
 print(f"{text_autoiso}, {text_cameratemp}")
 
 # Odczytanie wideo
@@ -148,9 +148,10 @@ height_scr = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps_src = video_capture.get(cv2.CAP_PROP_FPS)
 total_frames = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
 
+print(f"video: width: {width_src} x {height_scr}, {fps_src}fps")
 print(f"total frames: {total_frames}")
 
-# zapis wideo
+# zapis wideo jeśli wybrano
 if args.stream:
     # rozmiar ramki oczekiwanej
     if args.frame_crop:
@@ -160,6 +161,12 @@ if args.stream:
     # MJPG do timelapsów
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     wideo_out = cv2.VideoWriter(output_video_path, fourcc, fps_src, output_size)
+
+# tworzenie folderu na klatki jeśli wybrano
+if args.frame_save:
+    if not os.path.exists(output_frame_folder):
+        os.makedirs(output_frame_folder, exist_ok=True)
+
 
 print("Processing: ")
 while video_capture.isOpened():
