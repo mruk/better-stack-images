@@ -123,7 +123,18 @@ text_mediaduration = f"{metadata.get('MediaDuration', 'Brak danych')}"
 text_autoiso = f"ISO{metadata.get('AutoISO', 'Brak danych')}"
 text_cameratemp = f"chip temp:{metadata.get('CameraTemperature', 'Brak danych')}"
 
-sub_sec_create_date = datetime.strptime(text_createdate[:-6], '%Y:%m:%d %H:%M:%S.%f')
+date_formats = ['%Y:%m:%d %H:%M:%S.%f', '%Y:%m:%d %H:%M:%S', '%Y:%m:%d %H:%M']
+
+sub_sec_create_date = None
+for date_format in date_formats:
+    try:
+        sub_sec_create_date = datetime.strptime(text_createdate, date_format)
+        break
+    except ValueError:
+        continue
+
+if sub_sec_create_date is None:
+    print(f"Could not parse date: {text_createdate}")
 
 print(metadata)
 print(f"{sub_sec_create_date}")
