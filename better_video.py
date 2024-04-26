@@ -13,24 +13,39 @@ resize_interpolation_methods = ['INTER_NEAREST', 'INTER_LINEAR', 'INTER_AREA', '
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Better Stack Images')
 
-    parser.add_argument('--open-file', type=str, help='Full path to video file')
-    parser.add_argument('--annotate', action='store_true', help='print file metadata visual on image')
+    parser.add_argument('--open-file', type=str,
+                        help='Full path to the video file.')
+    parser.add_argument('--annotate', action='store_true',
+                        help='Print file metadata visually on the image.')
     parser.add_argument('--stream', action='store_true',
-                        help='repack and save video stream from mp4 to mjpg for picky Registax')
-    parser.add_argument('--frame-center', nargs='+', type=int, help='find centroid of image and center it')
-    parser.add_argument('--frame-crop', nargs='+', type=int, help='Crop size in x y pixels, e.g. 1200 1200')
-    parser.add_argument('--skip-blur', nargs=1, type=float, help='skip bottom of blurred images')
-    parser.add_argument('--frame-resize', nargs='+', type=int, help='resize frame to x y pixels, e.g. 1200 1200')
+                        help='Repack and save the video stream from mp4 to mjpg for picky Registax')
+    parser.add_argument('--frame-center', nargs='+', type=int,
+                        help='Find the centroid of the image and center it.')
+    parser.add_argument('--frame-crop', nargs='+', type=int,
+                        help='Crop size in x y pixels, e.g. 1200 1200.')
+    parser.add_argument('--skip-blur', nargs=1, type=float,
+                        help='Skip the most blurred images using an arbitrary threshold.')
+    parser.add_argument('--frame-resize', nargs='+', type=int,
+                        help='Resize frame to x y pixels, e.g. 1200 1200')
     parser.add_argument('--resize-method', type=str, choices=resize_interpolation_methods, default='INTER_CUBIC',
                         help='Method of interpolation to be used for resizing: '
                              'INTER_NEAREST, INTER_LINEAR, INTER_AREA, INTER_CUBIC, INTER_LANCZOS4')
-    parser.add_argument('--frame-save', action='store_true', help='save all frames as .png, also for picky Registax')
+    parser.add_argument('--frame-save', action='store_true',
+                        help='Save all frames as .png, also for picky Registax.')
 
-    return parser.parse_args()
+    _args = parser.parse_args()
+    if _args.open_file is None:
+        parser.print_help()
+        exit()
+    return _args
 
 
-args = parse_arguments()
-# sama nazwa pliku...
+try:
+    args = parse_arguments()
+except SystemExit:
+    print("No arguments? Exiting...")
+    exit()
+
 source_file_name = os.path.basename(args.open_file)
 # ...bez rozszerzenia
 source_plain_name = os.path.splitext(source_file_name)[0]
@@ -220,7 +235,7 @@ while video_capture.isOpened():
 
     # save to image
     if args.frame_save:
-        output_filename = os.path.join(output_frame_folder, f'{source_plain_name}_{current_frame:04d}.png')
+        output_filename = os.path.join(output_frame_folder, f'{source_plain_name}_{current_frame:05d}.png')
         cv2.imwrite(output_filename, video_frame)
 
     # save to video
