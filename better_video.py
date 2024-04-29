@@ -63,7 +63,6 @@ resize_interpolation_constants = {
     'INTER_LANCZOS4': cv2.INTER_LANCZOS4
 }
 
-
 if args.annotate:
     print("Annotation is enabled")
 if args.stream:
@@ -78,6 +77,18 @@ if args.frame_resize:
     print("Resizing is enabled")
 if args.frame_save:
     print("Saving all frames as .png is enabled")
+
+
+def annotate_frame(_frame):
+    # TODO: zastąpić to wszystko globalną kolekcją metadanych
+    # if args.skip_blur:
+    #    cv2.putText(_frame, f"Laplacian: {laplacian}",
+    #                (16, 96), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
+
+    cv2.putText(_frame, f"{get_frame_creation_time(video_capture, sub_sec_create_date)}",
+                (16, 32), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
+    cv2.putText(_frame, f"{text_autoiso}, {text_cameratemp}",
+                (16, 64), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
 
 
 def get_centered_image(image, treshold):
@@ -111,6 +122,33 @@ def get_centered_image(image, treshold):
     new_frame[dst_start_y:dst_start_y + copy_height, dst_start_x:dst_start_x + copy_width] = \
         image[src_start_y:src_start_y + copy_height, src_start_x:src_start_x + copy_width]
     return new_frame
+
+
+def get_crop_image(image, _crop_size):
+    # planetary crop size: 128x128
+    crop_width, crop_height = 128, 128
+
+    if len(_crop_size) == 1:
+        crop_width = crop_height = _crop_size[0]
+    elif len(_crop_size) == 2:
+        crop_width, crop_height = _crop_size
+    # współrzędne początkowe (x, y) dla wycięcia
+    start_x = image.shape[1] // 2 - crop_width // 2
+    start_y = image.shape[0] // 2 - crop_height // 2
+    return image[start_y:start_y + crop_height, start_x:start_x + crop_width]
+
+
+def get_resized_image(_image, _size):
+    return cv2.resize(_image, (_size[0], _size[1]),
+                      interpolation=resize_interpolation_constants[args.resize_method])
+
+
+def is_frame_blurred(_frame, _treshold):
+    # kryterium Laplasjana lub inne do wyboru w przyszłości
+    # Laplasjan obrazu - druga pochodna obrazu
+    laplacian = cv2.Laplacian(_frame, cv2.CV_64F).var()
+    print(f"frame Laplacian: {laplacian}")
+    return laplacian < _treshold
 
 
 def get_frame_creation_time(capture, sub_sec_createdatetime):
@@ -162,6 +200,10 @@ width_src = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
 height_scr = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps_src = video_capture.get(cv2.CAP_PROP_FPS)
 total_frames = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
+output_size = (width_src, height_scr)
+
+# zmienne pomocnicze
+min_crop_size = 128
 
 print(f"video: width: {width_src} x {height_scr}, {fps_src}fps")
 print(f"total frames: {total_frames}")
@@ -171,8 +213,7 @@ if args.stream:
     # rozmiar ramki oczekiwanej
     if args.frame_crop:
         output_size = (args.frame_crop[0], args.frame_crop[1] if len(args.frame_crop) > 1 else args.frame_crop[0])
-    else:
-        output_size = (width_src, height_scr)
+
     # MJPG do timelapsów
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     wideo_out = cv2.VideoWriter(output_video_path, fourcc, fps_src, output_size)
@@ -182,7 +223,6 @@ if args.frame_save:
     if not os.path.exists(output_frame_folder):
         os.makedirs(output_frame_folder, exist_ok=True)
 
-
 print("Processing: ")
 while video_capture.isOpened():
     ret, video_frame = video_capture.read()
@@ -190,54 +230,28 @@ while video_capture.isOpened():
         break
 
     current_frame = int(video_capture.get(cv2.CAP_PROP_POS_FRAMES))
-    laplacian = 0
     print(progress_bar(current_frame, total_frames, fps_src), end='\r')
 
-    # pomijanie rozmytych klatek
+    # skip blurred frames
     if args.skip_blur:
-        laplacian = cv2.Laplacian(video_frame, cv2.CV_64F).var()
-        print(f"laplacian: {laplacian}")
-        if laplacian < args.skip_blur[0]:  # wielkość arbitralna
+        if is_frame_blurred(video_frame, args.skip_blur[0]):
             continue
-
-    # wypośrodkowanie obrazu
+    # center frame
     if args.frame_center:
         video_frame = get_centered_image(video_frame, args.frame_center[0])
-
-    # zmiana rozmiaru
+    # resize frame
     if args.frame_resize:
-        video_frame = cv2.resize(video_frame, (args.frame_resize[0], args.frame_resize[1]),
-                                 interpolation=resize_interpolation_constants[args.resize_method])
-
-    # crop size
+        video_frame = get_resized_image(video_frame, args.frame_resize)
+    # crop frame
     if args.frame_crop:
-        crop_width, crop_height = 128, 128
-        if len(args.frame_crop) == 1:
-            crop_width = crop_height = args.frame_crop[0]
-        elif len(args.frame_crop) == 2:
-            crop_width, crop_height = args.frame_crop
-        # współrzędne początkowe (x, y) dla wycięcia
-        start_x = video_frame.shape[1] // 2 - crop_width // 2
-        start_y = video_frame.shape[0] // 2 - crop_height // 2
-        # crop kwadratu/prostokąta ze środka
-        video_frame = video_frame[start_y:start_y + crop_height, start_x:start_x + crop_width]
-
+        video_frame = get_crop_image(video_frame, args.frame_crop)
     # metadata
     if args.annotate:
-        if args.skip_blur:
-            cv2.putText(video_frame, f"laplacian {laplacian}",
-                        (16, 96), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
-
-        cv2.putText(video_frame, f"{get_frame_creation_time(video_capture, sub_sec_create_date)}",
-                    (16, 32), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
-        cv2.putText(video_frame, f"{text_autoiso}, {text_cameratemp}",
-                    (16, 64), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
-
+        annotate_frame(video_frame)
     # save to image
     if args.frame_save:
         output_filename = os.path.join(output_frame_folder, f'{source_plain_name}_{current_frame:05d}.png')
         cv2.imwrite(output_filename, video_frame)
-
     # save to video
     if args.stream:
         wideo_out.write(video_frame)
