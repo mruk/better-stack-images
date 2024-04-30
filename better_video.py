@@ -157,6 +157,26 @@ def get_frame_creation_time(capture, sub_sec_createdatetime):
     return frame_time.strftime('%Y/%m/%d T %H:%M:%S.%f')[:-4]
 
 
+def get_sub_sec_create_date(_text_createdate):
+    _date_formats = ['%Y:%m:%d %H:%M:%S.%f%z',
+                     '%Y:%m:%d %H:%M:%S.%f',
+                     '%Y:%m:%d %H:%M:%S',
+                     '%Y:%m:%d %H:%M']
+
+    _sub_sec_create_date = None
+    for _date_format in _date_formats:
+        try:
+            _sub_sec_create_date = datetime.strptime(_text_createdate, _date_format)
+            break
+        except ValueError:
+            continue
+
+    if _sub_sec_create_date is None:
+        print(f"Could not parse date: {_text_createdate}")
+
+    return _sub_sec_create_date
+
+
 def progress_bar(_current_frame, _total_frames, fps):
     total_seconds = int(_total_frames // fps)
     current_second = int(_current_frame // fps)
@@ -172,22 +192,11 @@ stdout, stderr = process.communicate()
 metadata = json.loads(stdout)[0]  # przekierowanie to Python dict
 
 text_createdate = f"{metadata.get('SubSecCreateDate', 'Brak danych')}"
+sub_sec_create_date = get_sub_sec_create_date(text_createdate)
 text_mediaduration = f"{metadata.get('MediaDuration', 'Brak danych')}"
 text_autoiso = f"ISO{metadata.get('AutoISO', 'Brak danych')}"
 text_cameratemp = f"chip temp:{metadata.get('CameraTemperature', 'Brak danych')}"
 
-date_formats = ['%Y:%m:%d %H:%M:%S.%f', '%Y:%m:%d %H:%M:%S', '%Y:%m:%d %H:%M']
-
-sub_sec_create_date = None
-for date_format in date_formats:
-    try:
-        sub_sec_create_date = datetime.strptime(text_createdate, date_format)
-        break
-    except ValueError:
-        continue
-
-if sub_sec_create_date is None:
-    print(f"Could not parse date: {text_createdate}")
 
 print(metadata)
 print(f"SubSecCreateDate: {sub_sec_create_date}")
