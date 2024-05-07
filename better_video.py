@@ -1,6 +1,7 @@
 import argparse
 import cv2
 from datetime import datetime, timedelta
+from DataStore import DataStore
 import numpy as np
 import subprocess
 import json
@@ -62,6 +63,8 @@ resize_interpolation_constants = {
     'INTER_CUBIC': cv2.INTER_CUBIC,
     'INTER_LANCZOS4': cv2.INTER_LANCZOS4
 }
+
+data_store = DataStore()
 
 if args.annotate:
     print("Annotation is enabled")
@@ -148,6 +151,9 @@ def is_frame_blurred(_frame, _treshold):
     # Laplasjan obrazu - druga pochodna obrazu
     laplacian = cv2.Laplacian(_frame, cv2.CV_64F).var()
     print(f"frame Laplacian: {laplacian}")
+
+    _current_frame = int(video_capture.get(cv2.CAP_PROP_POS_FRAMES))
+    data_store.add_laplacian_value(_current_frame, laplacian)
     return laplacian < _treshold
 
 
@@ -196,7 +202,6 @@ sub_sec_create_date = get_sub_sec_create_date(text_createdate)
 text_mediaduration = f"{metadata.get('MediaDuration', 'Brak danych')}"
 text_autoiso = f"ISO{metadata.get('AutoISO', 'Brak danych')}"
 text_cameratemp = f"chip temp:{metadata.get('CameraTemperature', 'Brak danych')}"
-
 
 print(metadata)
 print(f"SubSecCreateDate: {sub_sec_create_date}")
@@ -268,5 +273,10 @@ while video_capture.isOpened():
 # uwolnienie zasobów
 if args.stream:
     wideo_out.release()
+
+print(f"Laplasjan, percentyl 25: {data_store.get_laplacian_by_percentile(25)}")
+print(f"Laplasjan, percentyl 50: {data_store.get_laplacian_by_percentile(50)}")
+print(f"Laplasjan, percentyl 75: {data_store.get_laplacian_by_percentile(75)}")
+
 video_capture.release()
 cv2.destroyAllWindows()
